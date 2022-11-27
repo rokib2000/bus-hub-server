@@ -23,6 +23,14 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     const categoryCollection = client.db("busHub").collection("categories");
+    const usersCollection = client.db("busHub").collection("users");
+
+    // Users
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
 
     // categories
     app.get("/categories", async (req, res) => {
