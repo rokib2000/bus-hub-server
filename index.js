@@ -65,6 +65,19 @@ async function run() {
 
     // product
 
+    app.get("/products", async (req, res) => {
+      let query = {};
+      if (req.query.category) {
+        query = {
+          category: req.query.category,
+        };
+      }
+
+      const cursor = productsCollection.find(query);
+      const products = await cursor.toArray();
+      res.send(products);
+    });
+
     app.post("/products", async (req, res) => {
       const product = req.body;
       const result = await productsCollection.insertOne(product);
