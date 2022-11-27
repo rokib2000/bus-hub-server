@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion } = require("mongodb");
+const { query } = require("express");
 require("dotenv").config();
 
 const app = express();
@@ -26,10 +27,29 @@ async function run() {
     const usersCollection = client.db("busHub").collection("users");
 
     // Users
+
+    app.get("/users", async (req, res) => {
+      const query = {};
+      if (req.query.email) {
+        query = {
+          email: req.query.email,
+        };
+      }
+
+      const cursor = usersCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
     app.post("/users", async (req, res) => {
       const user = req.body;
-      const result = await usersCollection.insertOne(user);
-      res.send(result);
+
+      const existUser = await usersCollection.findOne(user);
+
+      if (!existUser) {
+        const result = await usersCollection.insertOne(user);
+        res.send(result);
+      }
     });
 
     // categories
