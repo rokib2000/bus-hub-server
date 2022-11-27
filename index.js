@@ -25,6 +25,7 @@ async function run() {
   try {
     const categoryCollection = client.db("busHub").collection("categories");
     const usersCollection = client.db("busHub").collection("users");
+    const productsCollection = client.db("busHub").collection("products");
 
     // Users
 
@@ -43,6 +44,8 @@ async function run() {
 
     app.post("/users", async (req, res) => {
       const user = req.body;
+      // const newUser = req.body.email;
+      // console.log(newUser);
 
       const existUser = await usersCollection.findOne(user);
 
@@ -58,6 +61,14 @@ async function run() {
       const cursor = categoryCollection.find(query);
       const categories = await cursor.toArray();
       res.send(categories);
+    });
+
+    // product
+
+    app.post("/products", async (req, res) => {
+      const product = req.body;
+      const result = await productsCollection.insertOne(product);
+      res.send(result);
     });
   } finally {
     //finally
