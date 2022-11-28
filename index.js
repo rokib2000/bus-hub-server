@@ -94,6 +94,16 @@ async function run() {
       res.send(result);
     });
 
+    // delete user
+    app.delete("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      const query = { _id: ObjectId(id) };
+      const result = await usersCollection.deleteOne(query);
+      console.log(result);
+      res.send(result);
+    });
+
     //**********************/
     // categories
     //******************** */
@@ -174,8 +184,11 @@ async function run() {
 
     app.post("/orders", async (req, res) => {
       const order = req.body;
-      const result = await ordersCollection.insertOne(order);
-      res.send(result);
+      const existOrder = await ordersCollection.findOne(order);
+      if (!existOrder) {
+        const result = await ordersCollection.insertOne(order);
+        res.send(result);
+      }
     });
   } finally {
     //finally
