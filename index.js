@@ -38,6 +38,13 @@ async function run() {
     //**********************/
     // User
     //******************** */
+    // get single user
+    app.get("/users/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const user = await usersCollection.findOne(query);
+      res.send(user);
+    });
 
     // get user data
     app.get("/users", async (req, res) => {
@@ -71,6 +78,20 @@ async function run() {
         const result = await usersCollection.insertOne(user);
         res.send(result);
       }
+    });
+
+    //update user verify data
+    app.put("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const status = req.body.status;
+      const query = { _id: ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          status: status,
+        },
+      };
+      const result = await usersCollection.updateOne(query, updateDoc);
+      res.send(result);
     });
 
     //**********************/
