@@ -33,6 +33,7 @@ async function run() {
     const categoryCollection = client.db("busHub").collection("categories");
     const usersCollection = client.db("busHub").collection("users");
     const productsCollection = client.db("busHub").collection("products");
+    const ordersCollection = client.db("busHub").collection("orders");
 
     //**********************/
     // User
@@ -40,16 +41,22 @@ async function run() {
 
     // get user data
     app.get("/users", async (req, res) => {
-      const query = {};
+      let query = {};
       if (req.query.email) {
         query = {
           email: req.query.email,
         };
       }
+      // console.log(req.query.role);
+      if (req.query.role) {
+        query = {
+          accountType: req.query.role,
+        };
+      }
 
       const cursor = usersCollection.find(query);
-      const result = await cursor.toArray();
-      res.send(result);
+      const users = await cursor.toArray();
+      res.send(users);
     });
 
     // post user data
@@ -91,6 +98,12 @@ async function run() {
         };
       }
 
+      if (req.query.status) {
+        query = {
+          status: req.query.status,
+        };
+      }
+
       const sort = { date: -1 };
       const cursor = productsCollection.find(query).sort(sort);
       const products = await cursor.toArray();
@@ -109,6 +122,30 @@ async function run() {
     app.post("/products", async (req, res) => {
       const product = req.body;
       const result = await productsCollection.insertOne(product);
+      res.send(result);
+    });
+
+    //update product report data
+    app.put("/products/:id", async (req, res) => {
+      const id = req.params.id;
+      const status = req.body.status;
+      const query = { _id: ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          status: status,
+        },
+      };
+      const result = await productsCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
+
+    //************** */
+    //Order
+    //************** */
+
+    app.post("/orders", async (req, res) => {
+      const order = req.body;
+      const result = await ordersCollection.insertOne(order);
       res.send(result);
     });
   } finally {
