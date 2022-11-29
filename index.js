@@ -5,6 +5,8 @@ const { query } = require("express");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
+const stripe = require("stripe")(process.env.STRIPE_SK);
+
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -56,6 +58,7 @@ async function run() {
     const usersCollection = client.db("busHub").collection("users");
     const productsCollection = client.db("busHub").collection("products");
     const ordersCollection = client.db("busHub").collection("orders");
+    const paymentsCollection = client.db("busHub").collection("payments");
 
     //****************** */
     //JWT
@@ -86,7 +89,7 @@ async function run() {
         return res.status(403).send({ message: "unauthorized access" });
       }
 
-      console.log(decoded.email, req.query.email);
+      // console.log(decoded.email, req.query.email);
 
       let query = {};
       if (req.query.email) {
@@ -163,10 +166,10 @@ async function run() {
     // delete user
     app.delete("/users/:id", async (req, res) => {
       const id = req.params.id;
-      console.log(id);
+      // console.log(id);
       const query = { _id: ObjectId(id) };
       const result = await usersCollection.deleteOne(query);
-      console.log(result);
+      // console.log(result);
       res.send(result);
     });
 
@@ -328,6 +331,60 @@ async function run() {
       const orders = await cursor.toArray();
       res.send(orders);
     });
+
+    // get order single data
+    app.get("/orders/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = {
+        _id: ObjectId(id),
+      };
+
+      const result = await ordersCollection.findOne(query);
+      res.send(result);
+    });
+
+    //************** */
+    //Payment
+    //************** */
+
+    app.post("/create-payment-intent", async (req, res) => {
+      const order = req.body;
+      const price = order.price;
+
+      const amount = price * 100;
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+
+      //
+    });
+
+    app.post("/payments", async (req, res) => {
+      const payment = req.body;
+      const result = await paymentsCollection.insertOne(payment);
+
+      const id = payment.orderId;
+      const filter = { _id: ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          paid: true,
+          transactionId: payment.transactionId,
+        },
+      };
+
+      const updateResult = await ordersCollection.updateOne(filter, updatedDoc);
+
+      res.send(result);
+    });
+
+    //
   } finally {
     //finally
   }
