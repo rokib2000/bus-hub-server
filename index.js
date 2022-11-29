@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { query } = require("express");
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 const app = express();
@@ -28,12 +29,44 @@ const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1,
 });
 
+//****************** */
+//JWT function
+//****************** */
+
+function verifyJWT(req, res, next) {
+  // console.log(req.headers.authorization);
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+  const token = authHeader.split(" ")[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
+    if (err) {
+      res.status(401).send({ message: "unauthorized access" });
+    }
+    req.decoded = decoded;
+    next();
+  });
+}
+
 async function run() {
   try {
     const categoryCollection = client.db("busHub").collection("categories");
     const usersCollection = client.db("busHub").collection("users");
     const productsCollection = client.db("busHub").collection("products");
     const ordersCollection = client.db("busHub").collection("orders");
+
+    //****************** */
+    //JWT
+    //****************** */
+
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      // console.log(user);
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "1d" });
+      res.send({ token });
+    });
 
     //**********************/
     // User
@@ -47,7 +80,14 @@ async function run() {
     });
 
     // get user data
-    app.get("/users", async (req, res) => {
+    app.get("/users", verifyJWT, async (req, res) => {
+      const decoded = req.decoded;
+      if (decoded.email !== req.query.email) {
+        return res.status(403).send({ message: "unauthorized access" });
+      }
+
+      console.log(decoded.email, req.query.email);
+
       let query = {};
       if (req.query.email) {
         query = {
@@ -64,6 +104,7 @@ async function run() {
       const cursor = usersCollection.find(query);
       const users = await cursor.toArray();
       res.send(users);
+      // console.log(users);
     });
 
     //user admin data
@@ -96,8 +137,6 @@ async function run() {
     // post user data
     app.post("/users", async (req, res) => {
       const user = req.body;
-      // const newUser = req.body.email;
-      // console.log(newUser);
 
       const existUser = await usersCollection.findOne(user);
 
@@ -156,6 +195,27 @@ async function run() {
         };
       }
 
+      if (req.query.advertise) {
+        query = {
+          advertise: req.query.advertise,
+        };
+      }
+
+      const sort = { date: -1 };
+      const cursor = productsCollection.find(query).sort(sort);
+      const products = await cursor.toArray();
+      res.send(products);
+    });
+
+    //get reported  product data
+    app.get("/products/reported", verifyJWT, async (req, res) => {
+      const decoded = req.decoded;
+      if (decoded.email !== req.query.email) {
+        return res.status(403).send({ message: "unauthorized access" });
+      }
+
+      let query = {};
+
       if (req.query.status) {
         query = {
           status: req.query.status,
@@ -188,11 +248,29 @@ async function run() {
       const id = req.params.id;
       const status = req.body.status;
       const query = { _id: ObjectId(id) };
+
       const updateDoc = {
         $set: {
           status: status,
         },
       };
+
+      const result = await productsCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
+
+    //update product advertise data
+    app.put("/products/advertise/:id", async (req, res) => {
+      const id = req.params.id;
+      const advertise = req.body.advertise;
+      const query = { _id: ObjectId(id) };
+
+      const updateDoc = {
+        $set: {
+          advertise: advertise,
+        },
+      };
+
       const result = await productsCollection.updateOne(query, updateDoc);
       res.send(result);
     });
@@ -210,7 +288,13 @@ async function run() {
     //************** */
 
     //post order data
-    app.post("/orders", async (req, res) => {
+    app.post("/orders", verifyJWT, async (req, res) => {
+      const decoded = req.decoded;
+
+      if (decoded.email !== req.query.email) {
+        return res.status(403).send({ message: "unauthorized access" });
+      }
+
       const order = req.body;
       const existOrder = await ordersCollection.findOne(order);
       if (!existOrder) {
@@ -220,7 +304,13 @@ async function run() {
     });
 
     //get all order data
-    app.get("/orders", async (req, res) => {
+    app.get("/orders", verifyJWT, async (req, res) => {
+      const decoded = req.decoded;
+
+      if (decoded.email !== req.query.email) {
+        return res.status(403).send({ message: "unauthorized access" });
+      }
+
       let query = {};
       if (req.query.buyerEmail) {
         query = {
