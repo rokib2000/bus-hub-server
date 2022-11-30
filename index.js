@@ -291,19 +291,20 @@ async function run() {
     //************** */
 
     //post order data
-    app.post("/orders", verifyJWT, async (req, res) => {
-      const decoded = req.decoded;
-
-      if (decoded.email !== req.query.email) {
-        return res.status(403).send({ message: "unauthorized access" });
-      }
-
+    app.post("/orders", async (req, res) => {
       const order = req.body;
-      const existOrder = await ordersCollection.findOne(order);
-      if (!existOrder) {
-        const result = await ordersCollection.insertOne(order);
-        res.send(result);
-      }
+
+      // const title = order;
+
+      // const filter = { title: title };
+
+      // const existOrder = await ordersCollection.findOne(filter);
+      // if (!existOrder) {
+      //   const result = await ordersCollection.insertOne(order);
+      //   res.send(result);
+      // }
+      const result = await ordersCollection.insertOne(order);
+      res.send(result);
     });
 
     //get all order data
